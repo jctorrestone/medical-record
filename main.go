@@ -56,6 +56,19 @@ func run(w *app.Window) error {
 				log.Println(searchValue)
 			}
 
+			if startButton.Clicked() {
+				go func() {
+					w2 := app.NewWindow(
+						app.Title("Nuevo paciente"),
+					)
+					err := run2(w2)
+					if err != nil {
+						log.Fatal(err)
+					}
+
+				}()
+			}
+
 			layout.Flex{
 				Axis: layout.Horizontal,
 			}.Layout(gtx,
