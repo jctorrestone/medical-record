@@ -1,10 +1,8 @@
 package main
 
 import (
-	"image/color"
 	"log"
 	"os"
-	"strconv"
 
 	"gioui.org/app"
 	"gioui.org/io/system"
@@ -17,6 +15,7 @@ import (
 )
 
 func main() {
+	connect()
 	go func() {
 		w := app.NewWindow(
 			app.Title("Historias clínicas virtuales"),
@@ -33,33 +32,60 @@ func main() {
 func run(w *app.Window) error {
 	th := material.NewTheme()
 	var ops op.Ops
-	var storyList widget.List
-	storyList.Axis = layout.Vertical
-	var searchEditor widget.Editor
-	var searchButton widget.Clickable
-	var startButton widget.Clickable
+
+	var wlistRecord widget.List
+	wlistRecord.Axis = layout.Vertical
+	var wedtSearch widget.Editor
+	wedtSearch.SingleLine = true
+	var clkSearch widget.Clickable
+	var clkAdd widget.Clickable
 
 	var searchValue string
 
-	searchEditor.SingleLine = true
+	records, err := getRecords()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	for {
-		e := <-w.Events()
+	var buttonList []*ListItem
+	for i := range records {
+		buttonList = append(buttonList, &ListItem{
+			Id:   records[i].ID,
+			Text: records[i].Date + ", " + records[i].PatientOBj.Lastname + " " + records[i].PatientOBj.Name,
+		})
+	}
+
+	for e := range w.Events() {
 		switch e := e.(type) {
 		case system.DestroyEvent:
 			return e.Err
 		case system.FrameEvent:
 			gtx := layout.NewContext(&ops, e)
 
-			if searchButton.Clicked() {
-				searchValue = searchEditor.Text()
+			medtSearch := material.Editor(th, &wedtSearch, "Ingrese el nombre")
+			btnAdd := material.Button(th, &clkAdd, "Añadir historia")
+
+			if clkSearch.Clicked() {
+				searchValue = wedtSearch.Text()
 				log.Println(searchValue)
+				records, err := getRecordsByPatient(searchValue)
+				if err != nil {
+					log.Fatal(err)
+				}
+				buttonList = nil
+				for i := range records {
+					buttonList = append(buttonList, &ListItem{
+						Id:   records[i].ID,
+						Text: records[i].Date + ", " + records[i].PatientOBj.Lastname + " " + records[i].PatientOBj.Name,
+					})
+				}
 			}
 
-			if startButton.Clicked() {
+			if clkAdd.Clicked() {
 				go func() {
 					w2 := app.NewWindow(
-						app.Title("Nuevo paciente"),
+						app.Title("Nueva historia clínica"),
+						app.Size(unit.Dp(750), unit.Dp(740)),
 					)
 					err := run2(w2)
 					if err != nil {
@@ -74,21 +100,9 @@ func run(w *app.Window) error {
 			}.Layout(gtx,
 				layout.Flexed(0.6,
 					func(gtx layout.Context) layout.Dimensions {
-						margins := layout.Inset{
-							Top:    unit.Dp(25),
-							Bottom: unit.Dp(25),
-							Left:   unit.Dp(35),
-						}
-						return margins.Layout(gtx,
+						return marginFlex.Layout(gtx,
 							func(gtx layout.Context) layout.Dimensions {
-								list := material.List(th, &storyList)
-								return list.Layout(gtx, 15, func(gtx layout.Context, index int) layout.Dimensions {
-									var buttonsample widget.Clickable
-									button := material.Button(th, &buttonsample, "paciente "+strconv.Itoa(index))
-									return layout.Inset{
-										Bottom: unit.Dp(15),
-									}.Layout(gtx, button.Layout)
-								})
+								return listItems(gtx, th, wlistRecord, buttonList)
 							},
 							//layout.Spacer{Width: unit.Dp(25)}.Layout,
 						)
@@ -106,46 +120,22 @@ func run(w *app.Window) error {
 									}.Layout(gtx,
 										layout.Flexed(0.7,
 											func(gtx layout.Context) layout.Dimensions {
-												margins := layout.Inset{
-													Top:    unit.Dp(35),
-													Bottom: unit.Dp(25),
-													Left:   unit.Dp(35),
-													Right:  unit.Dp(10),
-												}
-
-												border := widget.Border{
-													Color:        color.NRGBA{R: 204, G: 204, B: 204, A: 255},
-													CornerRadius: unit.Dp(2),
-													Width:        unit.Dp(1),
-												}
-
-												return margins.Layout(gtx,
+												return marginFlex.Layout(gtx,
 													func(gtx layout.Context) layout.Dimensions {
-														return border.Layout(gtx,
-															func(gtx layout.Context) layout.Dimensions {
-																edit := material.Editor(th, &searchEditor, "Ingrese el nombre")
-																return edit.Layout(gtx)
-															},
-														)
+														return borderEditor.Layout(gtx, medtSearch.Layout)
 													},
 												)
 											},
 										),
 										layout.Flexed(0.3,
 											func(gtx layout.Context) layout.Dimensions {
-												margins := layout.Inset{
-													Top:    unit.Dp(25),
-													Bottom: unit.Dp(25),
-													Left:   unit.Dp(10),
-													Right:  unit.Dp(35),
-												}
-												return margins.Layout(gtx,
+												return marginFlex.Layout(gtx,
 													func(gtx layout.Context) layout.Dimensions {
 														ic, err := widget.NewIcon(icons.ActionSearch)
 														if err != nil {
 															log.Fatal(err)
 														}
-														icon := material.IconButton(th, &searchButton, ic, "Búsqueda")
+														icon := material.IconButton(th, &clkSearch, ic, "Búsqueda")
 														return icon.Layout(gtx)
 													},
 												)
@@ -156,21 +146,7 @@ func run(w *app.Window) error {
 							),
 							layout.Rigid(
 								func(gtx layout.Context) layout.Dimensions {
-									margins := layout.Inset{
-										Top:    unit.Dp(25),
-										Bottom: unit.Dp(25),
-										Left:   unit.Dp(35),
-										Right:  unit.Dp(35),
-									}
-									return margins.Layout(gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											btn := material.Button(th, &startButton, "Añadir historia")
-											//maroon := color.NRGBA{R: 127, G: 0, B: 0, A: 255}
-											//title.Color = maroon
-											//title.Alignment = text.Middle
-											return btn.Layout(gtx)
-										},
-									)
+									return marginFlex.Layout(gtx, btnAdd.Layout)
 								},
 							),
 						)
@@ -181,4 +157,5 @@ func run(w *app.Window) error {
 			e.Frame(gtx.Ops)
 		}
 	}
+	return nil
 }

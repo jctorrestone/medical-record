@@ -1,7 +1,7 @@
 package main
 
 import (
-	"image/color"
+	"log"
 
 	"gioui.org/app"
 	"gioui.org/io/system"
@@ -12,92 +12,94 @@ import (
 	"gioui.org/widget/material"
 )
 
-func run2(w *app.Window) error {
+func run3(w *app.Window) error {
 	th := material.NewTheme()
 	var ops op.Ops
 
-	var nameEditor, lnameEditor widget.Editor
-	nameEditor.SingleLine = true
-	lnameEditor.SingleLine = true
-	var add widget.Clickable
+	var wedtName, wedtLname widget.Editor
+	wedtName.SingleLine = true
+	wedtLname.SingleLine = true
+	var clkAdd widget.Clickable
 	var gender widget.Enum
-	gender.Value = "m"
+	gender.Value = "1"
 
-	for {
-		e := <-w.Events()
+	for e := range w.Events() {
 		switch e := e.(type) {
 		case system.DestroyEvent:
 			return e.Err
 		case system.FrameEvent:
 			gtx := layout.NewContext(&ops, e)
 
-			name := material.Label(th, unit.Sp(15), "Nombres")
-			nameInput := material.Editor(th, &nameEditor, "")
-			lname := material.Label(th, unit.Sp(15), "Apellidos")
-			lnameInput := material.Editor(th, &lnameEditor, "")
-			inputBorder := widget.Border{
-				Color:        color.NRGBA{R: 204, G: 204, B: 204, A: 255},
-				CornerRadius: unit.Dp(2),
-				Width:        unit.Dp(1),
+			lblName := material.Label(th, unit.Sp(15), "Nombres")
+			medtName := material.Editor(th, &wedtName, "")
+			lblLname := material.Label(th, unit.Sp(15), "Apellidos")
+			medtLname := material.Editor(th, &wedtLname, "")
+			lblGender := material.Label(th, unit.Sp(15), "Sexo")
+			btnAdd := material.Button(th, &clkAdd, "Añadir")
+
+			if clkAdd.Clicked() {
+				pat := Patient{
+					Name:     wedtName.Text(),
+					Lastname: wedtLname.Text(),
+					Gender:   gender.Value,
+				}
+				id, err := addPatient(pat)
+				if err != nil {
+					log.Fatal(err)
+				}
+				log.Printf("Se añadio: %d", id)
+				w.Perform(system.ActionClose)
 			}
-			margins := layout.Inset{
-				Top:    unit.Dp(10),
-				Bottom: unit.Dp(10),
-				Left:   unit.Dp(100),
-				Right:  unit.Dp(100),
-			}
-			genderLabel := material.Label(th, unit.Sp(15), "Sexo")
-			addButton := material.Button(th, &add, "Añadir")
 
 			layout.Flex{
 				Axis: layout.Vertical,
 			}.Layout(gtx,
 				layout.Rigid(
 					func(gtx layout.Context) layout.Dimensions {
-						return margins.Layout(gtx, name.Layout)
+						return marginFlex.Layout(gtx, lblName.Layout)
 					},
 				),
 				layout.Rigid(
 					func(gtx layout.Context) layout.Dimensions {
-						return margins.Layout(gtx,
+						return marginFlex.Layout(gtx,
 							func(gtx layout.Context) layout.Dimensions {
-								return inputBorder.Layout(gtx, nameInput.Layout)
+								return borderEditor.Layout(gtx, medtName.Layout)
 							},
 						)
 					},
 				),
 				layout.Rigid(
 					func(gtx layout.Context) layout.Dimensions {
-						return margins.Layout(gtx, lname.Layout)
+						return marginFlex.Layout(gtx, lblLname.Layout)
 					},
 				),
 				layout.Rigid(
 					func(gtx layout.Context) layout.Dimensions {
-						return margins.Layout(gtx,
+						return marginFlex.Layout(gtx,
 							func(gtx layout.Context) layout.Dimensions {
-								return inputBorder.Layout(gtx, lnameInput.Layout)
+								return borderEditor.Layout(gtx, medtLname.Layout)
 							},
 						)
 					},
 				),
 				layout.Rigid(
 					func(gtx layout.Context) layout.Dimensions {
-						return margins.Layout(gtx, genderLabel.Layout)
+						return marginFlex.Layout(gtx, lblGender.Layout)
 					},
 				),
 				layout.Rigid(
 					func(gtx layout.Context) layout.Dimensions {
-						return margins.Layout(gtx, material.RadioButton(th, &gender, "m", "masculino").Layout)
+						return marginFlex.Layout(gtx, material.RadioButton(th, &gender, "1", "masculino").Layout)
 					},
 				),
 				layout.Rigid(
 					func(gtx layout.Context) layout.Dimensions {
-						return margins.Layout(gtx, material.RadioButton(th, &gender, "f", "femenino").Layout)
+						return marginFlex.Layout(gtx, material.RadioButton(th, &gender, "0", "femenino").Layout)
 					},
 				),
 				layout.Rigid(
 					func(gtx layout.Context) layout.Dimensions {
-						return margins.Layout(gtx, addButton.Layout)
+						return marginFlex.Layout(gtx, btnAdd.Layout)
 					},
 				),
 			)
@@ -105,4 +107,5 @@ func run2(w *app.Window) error {
 			e.Frame(gtx.Ops)
 		}
 	}
+	return nil
 }
