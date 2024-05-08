@@ -12,7 +12,7 @@ import (
 	"gioui.org/widget/material"
 )
 
-func run3(w *app.Window) error {
+func runAddPatient(w *app.Window) error {
 	th := material.NewTheme()
 	var ops op.Ops
 

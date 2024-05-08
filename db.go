@@ -18,6 +18,21 @@ type Patient struct {
 	Gender   string
 }
 
+type Exam struct {
+	ID      int64
+	Hg      bool
+	Gvc     bool
+	Hepat   bool
+	RxTorax bool
+	TemTM   bool
+	DimeroD bool
+	Pcr     bool
+	Ferri   bool
+	TpTPT   bool
+	Procal  bool
+	Fibri   bool
+}
+
 type Record struct {
 	ID         int64
 	PatientID  int64
@@ -27,6 +42,8 @@ type Record struct {
 	Weight     int64
 	Height     int64
 	Duration   int64
+	ExamID     int64
+	ExamObj    Exam
 }
 
 func connect() {
@@ -72,14 +89,57 @@ func getPatients() ([]Patient, error) {
 	return patients, nil
 }
 
+func getPatientById(id int64) (Patient, error) {
+	var patient Patient
+	row := db.QueryRow("SELECT * FROM patient WHERE id = ?", id)
+	if err := row.Scan(&patient.ID, &patient.Name, &patient.Lastname, &patient.Gender); err != nil {
+		if err == sql.ErrNoRows {
+			return patient, fmt.Errorf("getPatientById %d: no such patient", id)
+		}
+		return patient, fmt.Errorf("getPatientById %d: %v", id, err)
+	}
+	return patient, nil
+}
+
 func addPatient(pat Patient) (int64, error) {
-	result, err := db.Exec("INSERT INTO patient (name, last_name, gender) VALUES (?, ?, ?)", pat.Name, pat.Lastname, pat.Gender)
+	result, err := db.Exec(
+		"INSERT INTO patient (name, last_name, gender) VALUES (?, ?, ?)",
+		pat.Name, pat.Lastname, pat.Gender)
 	if err != nil {
 		return 0, fmt.Errorf("addPatient: %v", err)
 	}
 	id, err := result.LastInsertId()
 	if err != nil {
 		return 0, fmt.Errorf("addPatient: %v", err)
+	}
+	return id, nil
+}
+
+func addExam(exam Exam) (int64, error) {
+	result, err := db.Exec(
+		"INSERT INTO exam (hg, gvc, hepat, rx_torax, tem_t_m, dimero_d, pcr, ferri, tp_tpt, procal, fibri) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		exam.Hg, exam.Gvc, exam.Hepat, exam.RxTorax, exam.TemTM, exam.DimeroD,
+		exam.Pcr, exam.Ferri, exam.TpTPT, exam.Procal, exam.Fibri)
+	if err != nil {
+		return 0, fmt.Errorf("addExam: %v", err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("addExam: %v", err)
+	}
+	return id, nil
+}
+
+func addRecord(record Record) (int64, error) {
+	result, err := db.Exec(
+		"INSERT INTO record (patient_id, rdate, age, weight, height, duration, exam_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		record.PatientID, record.Date, record.Age, record.Weight, record.Height, record.Duration, record.ExamID)
+	if err != nil {
+		return 0, fmt.Errorf("addRecord: %v", err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("addRecord: %v", err)
 	}
 	return id, nil
 }
@@ -93,7 +153,7 @@ func getRecords() ([]Record, error) {
 	defer rows.Close()
 	for rows.Next() {
 		var rec Record
-		if err := rows.Scan(&rec.ID, &rec.PatientID, &rec.Date, &rec.Age, &rec.Weight, &rec.Height, &rec.Duration, &rec.PatientOBj.ID, &rec.PatientOBj.Name, &rec.PatientOBj.Lastname, &rec.PatientOBj.Gender); err != nil {
+		if err := rows.Scan(&rec.ID, &rec.PatientID, &rec.Date, &rec.Age, &rec.Weight, &rec.Height, &rec.Duration, &rec.ExamID, &rec.PatientOBj.ID, &rec.PatientOBj.Name, &rec.PatientOBj.Lastname, &rec.PatientOBj.Gender); err != nil {
 			return nil, fmt.Errorf("getRecords: %v", err)
 		}
 		records = append(records, rec)
@@ -114,7 +174,7 @@ func getRecordsByPatient(query string) ([]Record, error) {
 	defer rows.Close()
 	for rows.Next() {
 		var rec Record
-		if err := rows.Scan(&rec.ID, &rec.PatientID, &rec.Date, &rec.Age, &rec.Weight, &rec.Height, &rec.Duration, &rec.PatientOBj.ID, &rec.PatientOBj.Name, &rec.PatientOBj.Lastname, &rec.PatientOBj.Gender); err != nil {
+		if err := rows.Scan(&rec.ID, &rec.PatientID, &rec.Date, &rec.Age, &rec.Weight, &rec.Height, &rec.Duration, &rec.ExamID, &rec.PatientOBj.ID, &rec.PatientOBj.Name, &rec.PatientOBj.Lastname, &rec.PatientOBj.Gender); err != nil {
 			return nil, fmt.Errorf("getRecordsByPatient %q: %v", query, err)
 		}
 		records = append(records, rec)

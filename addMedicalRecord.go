@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"math"
+	"strconv"
 	"time"
 
 	"gioui.org/app"
@@ -16,7 +17,10 @@ import (
 	"gioui.org/widget/material"
 )
 
-func run2(w *app.Window) error {
+var patText *material.LabelStyle
+var patObj Patient
+
+func runAddRecord(w *app.Window) error {
 	th := material.NewTheme()
 	var ops op.Ops
 
@@ -34,6 +38,8 @@ func run2(w *app.Window) error {
 	var examValues [11]widget.Bool
 	var wedtTreatment widget.Editor
 	var clkRecord widget.Clickable
+	lblPatient := material.Label(th, unit.Sp(15), "---")
+	patText = &lblPatient
 
 	for e := range w.Events() {
 		switch e := e.(type) {
@@ -45,7 +51,7 @@ func run2(w *app.Window) error {
 			lblFiliation := material.Label(th, unit.Sp(16), "Filiación")
 			lblFiliation.Alignment = text.Start
 			lblFiliation.Font.Weight = font.Bold
-			lblPatient := material.Label(th, unit.Sp(15), "---")
+
 			btnPatient := material.Button(th, &clkPatient, "Seleccionar paciente")
 			currentDate := time.Now().Format("02-01-2006")
 			lblDate := material.Label(th, unit.Sp(15), currentDate)
@@ -83,19 +89,73 @@ func run2(w *app.Window) error {
 			medtTreatment := material.Editor(th, &wedtTreatment, "")
 			btnRecord := material.Button(th, &clkRecord, "Añadir")
 
-			examFlex := layoutExams(gtx, chkExams)
+			examFlex := layoutExams(chkExams)
 
 			if clkPatient.Clicked() {
 				go func() {
-					w4 := app.NewWindow(
+					w := app.NewWindow(
 						app.Title("Seleccionar paciente"),
 					)
-					err := run4(w4)
+					err := runPatients(w)
 					if err != nil {
 						log.Fatal(err)
 					}
 
 				}()
+			}
+
+			if clkRecord.Clicked() {
+				ageText := edtAge.Text()
+				ageNum, err := strconv.ParseInt(ageText, 10, 64)
+
+				weightText := edtWeight.Text()
+				weightNum, err2 := strconv.ParseInt(weightText, 10, 64)
+
+				heightText := edtHeight.Text()
+				heightNum, err3 := strconv.ParseInt(heightText, 10, 64)
+
+				durationText := wedtDuration.Text()
+				durationNum, err4 := strconv.ParseInt(durationText, 10, 64)
+
+				if err != nil || err2 != nil || err3 != nil || err4 != nil {
+					log.Fatal(err)
+				}
+
+				exam := Exam{
+					Hg:      examValues[0].Value,
+					Gvc:     examValues[1].Value,
+					Hepat:   examValues[2].Value,
+					RxTorax: examValues[3].Value,
+					TemTM:   examValues[4].Value,
+					DimeroD: examValues[5].Value,
+					Pcr:     examValues[6].Value,
+					Ferri:   examValues[7].Value,
+					TpTPT:   examValues[8].Value,
+					Procal:  examValues[9].Value,
+					Fibri:   examValues[10].Value,
+				}
+
+				examID, err := addExam(exam)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				record := Record{
+					PatientID: patObj.ID,
+					Date:      time.Now().Format("2006-01-02 15:04:05"),
+					Age:       ageNum,
+					Weight:    weightNum,
+					Height:    heightNum,
+					Duration:  durationNum,
+					ExamID:    examID,
+				}
+
+				recordID, err := addRecord(record)
+				if err != nil {
+					log.Fatal(err)
+				}
+				log.Printf("Se añadio: %d", recordID)
+				w.Perform(system.ActionClose)
 			}
 
 			layout.Flex{
@@ -277,7 +337,7 @@ func run2(w *app.Window) error {
 	return nil
 }
 
-func layoutExams(gtx layout.Context, chkExams [11]material.CheckBoxStyle) []layout.FlexChild {
+func layoutExams(chkExams [11]material.CheckBoxStyle) []layout.FlexChild {
 	parentsLen := float64(len(chkExams)) / 2
 	parentsLen = math.Ceil(parentsLen)
 	var parents = make([]layout.FlexChild, int(parentsLen))

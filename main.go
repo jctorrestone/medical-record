@@ -83,11 +83,11 @@ func run(w *app.Window) error {
 
 			if clkAdd.Clicked() {
 				go func() {
-					w2 := app.NewWindow(
+					w := app.NewWindow(
 						app.Title("Nueva historia clínica"),
 						app.Size(unit.Dp(750), unit.Dp(740)),
 					)
-					err := run2(w2)
+					err := runAddRecord(w)
 					if err != nil {
 						log.Fatal(err)
 					}
@@ -102,7 +102,7 @@ func run(w *app.Window) error {
 					func(gtx layout.Context) layout.Dimensions {
 						return marginFlex.Layout(gtx,
 							func(gtx layout.Context) layout.Dimensions {
-								return listItems(gtx, th, wlistRecord, buttonList)
+								return listItems(gtx, th, wlistRecord, buttonList, sendMedicalRecord) //cambia la funcion
 							},
 							//layout.Spacer{Width: unit.Dp(25)}.Layout,
 						)
@@ -158,4 +158,8 @@ func run(w *app.Window) error {
 		}
 	}
 	return nil
+}
+
+func sendMedicalRecord(patientID int64) {
+
 }

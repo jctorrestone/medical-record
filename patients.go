@@ -17,7 +17,10 @@ type ListItem struct {
 	Click widget.Clickable
 }
 
-func run4(w *app.Window) error {
+var probando *app.Window
+
+func runPatients(w *app.Window) error {
+	probando = w
 	th := material.NewTheme()
 	var ops op.Ops
 
@@ -49,15 +52,16 @@ func run4(w *app.Window) error {
 
 			if clkAdd.Clicked() {
 				go func() {
-					w3 := app.NewWindow(
+					w := app.NewWindow(
 						app.Title("Añadir paciente"),
 					)
-					err := run3(w3)
+					err := runAddPatient(w)
 					if err != nil {
 						log.Fatal(err)
 					}
 
 				}()
+				w.Perform(system.ActionClose)
 			}
 
 			layout.Flex{
@@ -67,7 +71,7 @@ func run4(w *app.Window) error {
 					func(gtx layout.Context) layout.Dimensions {
 						return marginFlex.Layout(gtx,
 							func(gtx layout.Context) layout.Dimensions {
-								return listItems(gtx, th, wlistPatient, buttonList)
+								return listItems(gtx, th, wlistPatient, buttonList, sendPatient)
 							},
 						)
 					},
@@ -94,12 +98,23 @@ func run4(w *app.Window) error {
 	return nil
 }
 
-func listItems(gtx layout.Context, th *material.Theme, wlistItem widget.List, buttonList []*ListItem) layout.Dimensions {
+func sendPatient(patientID int64) {
+	patient, err := getPatientById(patientID)
+	if err != nil {
+		log.Fatal(err)
+	}
+	patText.Text = patient.Lastname + ", " + patient.Name
+	patObj = patient
+	probando.Perform(system.ActionClose)
+}
+
+func listItems(gtx layout.Context, th *material.Theme, wlistItem widget.List, buttonList []*ListItem, itemClicked func(int64)) layout.Dimensions {
 	return material.List(th, &wlistItem).Layout(gtx, len(buttonList),
 		func(gtx layout.Context, index int) layout.Dimensions {
 			item := buttonList[index]
 			for item.Click.Clicked() {
 				log.Printf("My id is: %v\n", item.Id)
+				itemClicked(item.Id)
 			}
 			return marginList.Layout(gtx, material.Button(th, &item.Click, item.Text).Layout)
 		},
