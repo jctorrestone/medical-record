@@ -51,7 +51,7 @@ func run(w *app.Window) error {
 	for i := range records {
 		buttonList = append(buttonList, &ListItem{
 			Id:   records[i].ID,
-			Text: records[i].Date + ", " + records[i].PatientOBj.Lastname + " " + records[i].PatientOBj.Name,
+			Text: records[i].Date + ", " + records[i].PatientObj.Lastname + " " + records[i].PatientObj.Name,
 		})
 	}
 
@@ -76,7 +76,7 @@ func run(w *app.Window) error {
 				for i := range records {
 					buttonList = append(buttonList, &ListItem{
 						Id:   records[i].ID,
-						Text: records[i].Date + ", " + records[i].PatientOBj.Lastname + " " + records[i].PatientOBj.Name,
+						Text: records[i].Date + ", " + records[i].PatientObj.Lastname + " " + records[i].PatientObj.Name,
 					})
 				}
 			}

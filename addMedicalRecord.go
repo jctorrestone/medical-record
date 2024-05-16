@@ -17,7 +17,6 @@ import (
 	"gioui.org/widget/material"
 )
 
-var patText *material.LabelStyle
 var patObj Patient
 
 func runAddRecord(w *app.Window) error {
@@ -30,16 +29,15 @@ func runAddRecord(w *app.Window) error {
 	var edtWeight widget.Editor
 	edtWeight.SingleLine = true
 	var edtHeight widget.Editor
-	edtWeight.SingleLine = true
+	edtHeight.SingleLine = true
 	var wedtDuration widget.Editor
 	wedtDuration.SingleLine = true
-	var wedtSymptoms widget.Editor
-	var wedtIDX widget.Editor
+	var clkSymptoms widget.Clickable
+	var clkIDX widget.Clickable
 	var examValues [11]widget.Bool
-	var wedtTreatment widget.Editor
+	var clkTreatment widget.Clickable
 	var clkRecord widget.Clickable
 	lblPatient := material.Label(th, unit.Sp(15), "---")
-	patText = &lblPatient
 
 	for e := range w.Events() {
 		switch e := e.(type) {
@@ -57,20 +55,20 @@ func runAddRecord(w *app.Window) error {
 			lblDate := material.Label(th, unit.Sp(15), currentDate)
 			lblDate.Alignment = text.End
 			lblAge := material.Label(th, unit.Sp(15), "Edad")
-			medtAge := material.Editor(th, &edtAge, "")
+			medtAge := material.Editor(th, &edtAge, "Años")
 			lblWeight := material.Label(th, unit.Sp(15), "Peso")
-			medtWeight := material.Editor(th, &edtWeight, "")
+			medtWeight := material.Editor(th, &edtWeight, "En kg")
 			lblHeight := material.Label(th, unit.Sp(15), "Talla")
-			medtHeight := material.Editor(th, &edtHeight, "")
+			medtHeight := material.Editor(th, &edtHeight, "En cm")
 			lblStory := material.Label(th, unit.Sp(16), "Historia de la enfermedad")
 			lblStory.Alignment = text.Start
 			lblStory.Font.Weight = font.Bold
 			lblDuration := material.Label(th, unit.Sp(15), "Tiempo de enfermedad")
-			medtDuration := material.Editor(th, &wedtDuration, "")
+			medtDuration := material.Editor(th, &wedtDuration, "Cuantos dias")
 			lblSymptoms := material.Label(th, unit.Sp(15), "Síntomas principales")
-			medtSymptoms := material.Editor(th, &wedtSymptoms, "")
+			btnSymptoms := material.Button(th, &clkSymptoms, "Elegir")
 			lblIDX := material.Label(th, unit.Sp(15), "IDX")
-			medtIDX := material.Editor(th, &wedtIDX, "")
+			btnIDX := material.Button(th, &clkIDX, "Elegir")
 			lblExams := material.Label(th, unit.Sp(15), "Examenes solicitados")
 			lblExams.Alignment = text.Start
 			var chkExams [11]material.CheckBoxStyle
@@ -86,10 +84,14 @@ func runAddRecord(w *app.Window) error {
 			chkExams[9] = material.CheckBox(th, &examValues[9], "Procalcitonina")
 			chkExams[10] = material.CheckBox(th, &examValues[10], "Fibrinógeno")
 			lblTreatment := material.Label(th, unit.Sp(15), "Tratamiento")
-			medtTreatment := material.Editor(th, &wedtTreatment, "")
+			btnTreatment := material.Button(th, &clkTreatment, "Elegir")
 			btnRecord := material.Button(th, &clkRecord, "Añadir")
 
 			examFlex := layoutExams(chkExams)
+
+			if patObj.ID != 0 {
+				lblPatient.Text = patObj.Lastname + ", " + patObj.Name
+			}
 
 			if clkPatient.Clicked() {
 				go func() {
@@ -104,22 +106,42 @@ func runAddRecord(w *app.Window) error {
 				}()
 			}
 
+			if clkSymptoms.Clicked() {
+				go func() {
+					w := app.NewWindow(
+						app.Title("Elija los síntomas"),
+					)
+					err := runSymptoms(w)
+					if err != nil {
+						log.Fatal(err)
+					}
+				}()
+			}
+
+			if clkIDX.Clicked() {
+				go func() {
+					w := app.NewWindow(
+						app.Title("Elija la enfermedad"),
+					)
+					err := runDiseases(w)
+					if err != nil {
+						log.Fatal(err)
+					}
+				}()
+			}
+
 			if clkRecord.Clicked() {
 				ageText := edtAge.Text()
-				ageNum, err := strconv.ParseInt(ageText, 10, 64)
+				ageNum, _ := strconv.ParseInt(ageText, 10, 64)
 
 				weightText := edtWeight.Text()
-				weightNum, err2 := strconv.ParseInt(weightText, 10, 64)
+				weightNum, _ := strconv.ParseInt(weightText, 10, 64)
 
 				heightText := edtHeight.Text()
-				heightNum, err3 := strconv.ParseInt(heightText, 10, 64)
+				heightNum, _ := strconv.ParseInt(heightText, 10, 64)
 
 				durationText := wedtDuration.Text()
-				durationNum, err4 := strconv.ParseInt(durationText, 10, 64)
-
-				if err != nil || err2 != nil || err3 != nil || err4 != nil {
-					log.Fatal(err)
-				}
+				durationNum, _ := strconv.ParseInt(durationText, 10, 64)
 
 				exam := Exam{
 					Hg:      examValues[0].Value,
@@ -268,29 +290,37 @@ func runAddRecord(w *app.Window) error {
 				),
 				layout.Rigid(
 					func(gtx layout.Context) layout.Dimensions {
-						return marginFlex.Layout(gtx, lblSymptoms.Layout)
-					},
-				),
-				layout.Rigid(
-					func(gtx layout.Context) layout.Dimensions {
-						return marginFlex.Layout(gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return borderEditor.Layout(gtx, medtSymptoms.Layout)
-							},
+						return layout.Flex{
+							Axis: layout.Horizontal,
+						}.Layout(gtx,
+							layout.Flexed(0.5,
+								func(gtx layout.Context) layout.Dimensions {
+									return marginFlex.Layout(gtx, lblSymptoms.Layout)
+								},
+							),
+							layout.Flexed(0.5,
+								func(gtx layout.Context) layout.Dimensions {
+									return marginFlex.Layout(gtx, lblIDX.Layout)
+								},
+							),
 						)
 					},
 				),
 				layout.Rigid(
 					func(gtx layout.Context) layout.Dimensions {
-						return marginFlex.Layout(gtx, lblIDX.Layout)
-					},
-				),
-				layout.Rigid(
-					func(gtx layout.Context) layout.Dimensions {
-						return marginFlex.Layout(gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return borderEditor.Layout(gtx, medtIDX.Layout)
-							},
+						return layout.Flex{
+							Axis: layout.Horizontal,
+						}.Layout(gtx,
+							layout.Flexed(0.5,
+								func(gtx layout.Context) layout.Dimensions {
+									return marginFlex.Layout(gtx, btnSymptoms.Layout)
+								},
+							),
+							layout.Flexed(0.5,
+								func(gtx layout.Context) layout.Dimensions {
+									return marginFlex.Layout(gtx, btnIDX.Layout)
+								},
+							),
 						)
 					},
 				),
@@ -317,11 +347,7 @@ func runAddRecord(w *app.Window) error {
 				),
 				layout.Rigid(
 					func(gtx layout.Context) layout.Dimensions {
-						return marginFlex.Layout(gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return borderEditor.Layout(gtx, medtTreatment.Layout)
-							},
-						)
+						return marginFlex.Layout(gtx, btnTreatment.Layout)
 					},
 				),
 				layout.Rigid(

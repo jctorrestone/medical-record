@@ -17,10 +17,10 @@ type ListItem struct {
 	Click widget.Clickable
 }
 
-var probando *app.Window
+var patWindow *app.Window
 
 func runPatients(w *app.Window) error {
-	probando = w
+	patWindow = w
 	th := material.NewTheme()
 	var ops op.Ops
 
@@ -103,9 +103,8 @@ func sendPatient(patientID int64) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	patText.Text = patient.Lastname + ", " + patient.Name
 	patObj = patient
-	probando.Perform(system.ActionClose)
+	patWindow.Perform(system.ActionClose)
 }
 
 func listItems(gtx layout.Context, th *material.Theme, wlistItem widget.List, buttonList []*ListItem, itemClicked func(int64)) layout.Dimensions {
