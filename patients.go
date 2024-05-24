@@ -9,6 +9,7 @@ import (
 	"gioui.org/op"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"golang.org/x/exp/shiny/materialdesign/icons"
 )
 
 type ListItem struct {
@@ -26,6 +27,9 @@ func runPatients(w *app.Window) error {
 
 	var wlistPatient widget.List
 	wlistPatient.Axis = layout.Vertical
+	var wedtSearch widget.Editor
+	var clkSearch widget.Clickable
+	icon, _ := widget.NewIcon(icons.ActionSearch)
 	var clkAdd widget.Clickable
 
 	patients, err := getPatients()
@@ -48,7 +52,25 @@ func runPatients(w *app.Window) error {
 		case system.FrameEvent:
 			gtx := layout.NewContext(&ops, e)
 
+			mlistPatient := material.List(th, &wlistPatient)
+			medtSearch := material.Editor(th, &wedtSearch, "Ingrese el nombre")
+			iconSearch := material.IconButton(th, &clkSearch, icon, "Búsqueda")
 			btnAdd := material.Button(th, &clkAdd, "Añadir")
+
+			if clkSearch.Clicked() {
+				searchValue := wedtSearch.Text()
+				patients, err := getPatientsByName(searchValue)
+				if err != nil {
+					log.Fatal(err)
+				}
+				buttonList = nil
+				for i := range patients {
+					buttonList = append(buttonList, &ListItem{
+						Id:   patients[i].ID,
+						Text: patients[i].Lastname + ", " + patients[i].Name,
+					})
+				}
+			}
 
 			if clkAdd.Clicked() {
 				go func() {
@@ -71,7 +93,7 @@ func runPatients(w *app.Window) error {
 					func(gtx layout.Context) layout.Dimensions {
 						return marginFlex.Layout(gtx,
 							func(gtx layout.Context) layout.Dimensions {
-								return listItems(gtx, th, wlistPatient, buttonList, sendPatient)
+								return mlistPatient.Layout(gtx, len(buttonList), listItems(th, buttonList, sendPatient))
 							},
 						)
 					},
@@ -80,8 +102,31 @@ func runPatients(w *app.Window) error {
 					func(gtx layout.Context) layout.Dimensions {
 						return layout.Flex{
 							Axis:    layout.Vertical,
-							Spacing: layout.SpaceStart,
+							Spacing: layout.SpaceEnd,
 						}.Layout(gtx,
+							layout.Rigid(
+								func(gtx layout.Context) layout.Dimensions {
+									return layout.Flex{
+										Axis:      layout.Horizontal,
+										Alignment: layout.Middle,
+									}.Layout(gtx,
+										layout.Flexed(0.7,
+											func(gtx layout.Context) layout.Dimensions {
+												return marginFlex.Layout(gtx,
+													func(gtx layout.Context) layout.Dimensions {
+														return borderEditor.Layout(gtx, medtSearch.Layout)
+													},
+												)
+											},
+										),
+										layout.Flexed(0.3,
+											func(gtx layout.Context) layout.Dimensions {
+												return marginFlex.Layout(gtx, iconSearch.Layout)
+											},
+										),
+									)
+								},
+							),
 							layout.Rigid(
 								func(gtx layout.Context) layout.Dimensions {
 									return marginFlex.Layout(gtx, btnAdd.Layout)
@@ -107,15 +152,13 @@ func sendPatient(patientID int64) {
 	patWindow.Perform(system.ActionClose)
 }
 
-func listItems(gtx layout.Context, th *material.Theme, wlistItem widget.List, buttonList []*ListItem, itemClicked func(int64)) layout.Dimensions {
-	return material.List(th, &wlistItem).Layout(gtx, len(buttonList),
-		func(gtx layout.Context, index int) layout.Dimensions {
-			item := buttonList[index]
-			for item.Click.Clicked() {
-				log.Printf("My id is: %v\n", item.Id)
-				itemClicked(item.Id)
-			}
-			return marginList.Layout(gtx, material.Button(th, &item.Click, item.Text).Layout)
-		},
-	)
+func listItems(th *material.Theme, buttonList []*ListItem, itemClicked func(int64)) layout.ListElement {
+	return func(gtx layout.Context, index int) layout.Dimensions {
+		item := buttonList[index]
+		for item.Click.Clicked() {
+			log.Printf("My id is: %v\n", item.Id)
+			itemClicked(item.Id)
+		}
+		return marginList.Layout(gtx, material.Button(th, &item.Click, item.Text).Layout)
+	}
 }

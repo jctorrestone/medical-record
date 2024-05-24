@@ -62,6 +62,7 @@ func run(w *app.Window) error {
 		case system.FrameEvent:
 			gtx := layout.NewContext(&ops, e)
 
+			mlistRecord := material.List(th, &wlistRecord)
 			medtSearch := material.Editor(th, &wedtSearch, "Ingrese el nombre")
 			btnAdd := material.Button(th, &clkAdd, "Añadir historia")
 
@@ -102,7 +103,7 @@ func run(w *app.Window) error {
 					func(gtx layout.Context) layout.Dimensions {
 						return marginFlex.Layout(gtx,
 							func(gtx layout.Context) layout.Dimensions {
-								return listItems(gtx, th, wlistRecord, buttonList, sendMedicalRecord) //cambia la funcion
+								return mlistRecord.Layout(gtx, len(buttonList), listItems(th, buttonList, sendMedicalRecord))
 							},
 							//layout.Spacer{Width: unit.Dp(25)}.Layout,
 						)
@@ -116,7 +117,8 @@ func run(w *app.Window) error {
 							layout.Rigid(
 								func(gtx layout.Context) layout.Dimensions {
 									return layout.Flex{
-										Axis: layout.Horizontal,
+										Axis:      layout.Horizontal,
+										Alignment: layout.Middle,
 									}.Layout(gtx,
 										layout.Flexed(0.7,
 											func(gtx layout.Context) layout.Dimensions {

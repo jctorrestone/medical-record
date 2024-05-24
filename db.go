@@ -136,6 +136,27 @@ func getPatients() ([]Patient, error) {
 	return patients, nil
 }
 
+func getPatientsByName(query string) ([]Patient, error) {
+	var patients []Patient
+	query = "%" + query + "%"
+	rows, err := db.Query("SELECT * FROM patient WHERE name LIKE ? OR last_name LIKE ? ORDER BY last_name ASC", query, query)
+	if err != nil {
+		return nil, fmt.Errorf("getPatientsByName %q: %v", query, err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var patient Patient
+		if err := rows.Scan(&patient.ID, &patient.Name, &patient.Lastname, &patient.Gender); err != nil {
+			return nil, fmt.Errorf("getPatientsByName %q: %v", query, err)
+		}
+		patients = append(patients, patient)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("getPatientsByName %q: %v", query, err)
+	}
+	return patients, nil
+}
+
 func getPatientById(id int64) (Patient, error) {
 	var patient Patient
 	row := db.QueryRow("SELECT * FROM patient WHERE id = ?", id)
@@ -232,6 +253,20 @@ func getRecordsByPatient(query string) ([]Record, error) {
 	return records, nil
 }
 
+func addSymptom(symptom Symptom) (int64, error) {
+	result, err := db.Exec(
+		"INSERT INTO symptom (description) VALUES (?)",
+		symptom.Description)
+	if err != nil {
+		return 0, fmt.Errorf("addSymptom: %v", err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("addSymptom: %v", err)
+	}
+	return id, nil
+}
+
 func getSymptomById(id int64) (Symptom, error) {
 	var symptom Symptom
 	row := db.QueryRow("SELECT * FROM symptom WHERE id = ?", id)
@@ -265,6 +300,34 @@ func getSymptomsByDesc(query string) ([]Symptom, error) {
 	return symptoms, nil
 }
 
+func addRecordSymptom(recSymptom RecordSymptom) (int64, error) {
+	result, err := db.Exec(
+		"INSERT INTO record_symptom (record_id, symptom_id) VALUES (?, ?)",
+		recSymptom.RecordID, recSymptom.SymptomID)
+	if err != nil {
+		return 0, fmt.Errorf("addRecordSymptom: %v", err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("addRecordSymptom: %v", err)
+	}
+	return id, nil
+}
+
+func addDisease(disease Disease) (int64, error) {
+	result, err := db.Exec(
+		"INSERT INTO disease (description) VALUES (?)",
+		disease.Description)
+	if err != nil {
+		return 0, fmt.Errorf("addDisease: %v", err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("addDisease: %v", err)
+	}
+	return id, nil
+}
+
 func getDiseaseById(id int64) (Disease, error) {
 	var disease Disease
 	row := db.QueryRow("SELECT * FROM disease WHERE id = ?", id)
@@ -296,4 +359,79 @@ func getDiseasesByDesc(query string) ([]Disease, error) {
 		return nil, fmt.Errorf("getDiseasesByDesc %q: %v", query, err)
 	}
 	return diseases, nil
+}
+
+func addIdx(idx Idx) (int64, error) {
+	result, err := db.Exec(
+		"INSERT INTO idx (record_id, disease_id) VALUES (?, ?)",
+		idx.RecordID, idx.DiseaseID)
+	if err != nil {
+		return 0, fmt.Errorf("addIdx: %v", err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("addIdx: %v", err)
+	}
+	return id, nil
+}
+
+func addMedicine(medicine Medicine) (int64, error) {
+	result, err := db.Exec(
+		"INSERT INTO medicine (name, brand, type, unit, dose) VALUES (?, ?, ?, ?, ?)",
+		medicine.Name, medicine.Brand, medicine.Type, medicine.Unit, medicine.Dose)
+	if err != nil {
+		return 0, fmt.Errorf("addMedicine: %v", err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("addMedicine: %v", err)
+	}
+	return id, nil
+}
+
+func getMedicinesByDesc(query string) ([]Medicine, error) {
+	var medicines []Medicine
+	query = "%" + query + "%"
+	rows, err := db.Query("SELECT * FROM medicine WHERE name LIKE ?", query)
+	if err != nil {
+		return nil, fmt.Errorf("getMedicinesByDesc %q: %v", query, err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var medicine Medicine
+		if err := rows.Scan(&medicine.ID, &medicine.Name, &medicine.Brand, &medicine.Type, &medicine.Unit, &medicine.Dose); err != nil {
+			return nil, fmt.Errorf("getMedicinesByDesc %q: %v", query, err)
+		}
+		medicines = append(medicines, medicine)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("getMedicinesByDesc %q: %v", query, err)
+	}
+	return medicines, nil
+}
+
+func getMedicineById(id int64) (Medicine, error) {
+	var medicine Medicine
+	row := db.QueryRow("SELECT * FROM medicine WHERE id = ?", id)
+	if err := row.Scan(&medicine.ID, &medicine.Name, &medicine.Brand, &medicine.Type, &medicine.Unit, &medicine.Dose); err != nil {
+		if err == sql.ErrNoRows {
+			return medicine, fmt.Errorf("getMedicineById %d: no such medicine", id)
+		}
+		return medicine, fmt.Errorf("getMedicineById %d: %v", id, err)
+	}
+	return medicine, nil
+}
+
+func addTreatment(treatment Treatment) (int64, error) {
+	result, err := db.Exec(
+		"INSERT INTO treatment (record_id, medicine_id, quantity, dosage, frequency, note) VALUES (?, ?, ?, ?, ?, ?)",
+		treatment.RecordID, treatment.MedicineID, treatment.Quantity, treatment.Dosage, treatment.Frequency, treatment.Note)
+	if err != nil {
+		return 0, fmt.Errorf("addTreatment: %v", err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("addTreatment: %v", err)
+	}
+	return id, nil
 }

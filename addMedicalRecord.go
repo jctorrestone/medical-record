@@ -130,6 +130,18 @@ func runAddRecord(w *app.Window) error {
 				}()
 			}
 
+			if clkTreatment.Clicked() {
+				go func() {
+					w := app.NewWindow(
+						app.Title("Tratamiento"),
+					)
+					err := runTreatments(w)
+					if err != nil {
+						log.Fatal(err)
+					}
+				}()
+			}
+
 			if clkRecord.Clicked() {
 				ageText := edtAge.Text()
 				ageNum, _ := strconv.ParseInt(ageText, 10, 64)
@@ -177,6 +189,28 @@ func runAddRecord(w *app.Window) error {
 					log.Fatal(err)
 				}
 				log.Printf("Se añadio: %d", recordID)
+
+				for i := range symptomList {
+					recSymptom := RecordSymptom{
+						RecordID:  recordID,
+						SymptomID: symptomList[i].Id,
+					}
+					addRecordSymptom(recSymptom)
+				}
+
+				for i := range diseaseList {
+					idx := Idx{
+						RecordID:  recordID,
+						DiseaseID: diseaseList[i].Id,
+					}
+					addIdx(idx)
+				}
+
+				for i := range treatments {
+					treatments[i].RecordID = recordID
+					addTreatment(treatments[i])
+				}
+
 				w.Perform(system.ActionClose)
 			}
 
